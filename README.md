@@ -22,6 +22,10 @@ ascii art generator for steam comments
 
 4. Get your ASCII art! 😎
 
+   ```bash
+   python3 source/generator.py samples/lenna.png --t=120
+   ```
+
 ## References
 - https://en.wikipedia.org/wiki/Cropping_(image)
 - https://en.wikipedia.org/wiki/Image_scaling
