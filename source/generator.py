@@ -71,6 +71,10 @@ def crop(image: Image) -> None:
     return image.crop((to_centre, 0, new_width + to_centre, height))
 
 
+def create_ascii(image: Image) -> None:
+    width, height = image.size
+
+
 if __name__ == "__main__":
     # create the parser object
     parser = argparse.ArgumentParser(
