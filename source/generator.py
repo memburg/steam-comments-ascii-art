@@ -1,3 +1,4 @@
+import os
 import argparse
 from PIL import Image
 
@@ -7,6 +8,7 @@ COMMENT_HEIGHT = 13
 FINAL_WIDTH = 2 * COMMENT_WIDTH
 FINAL_HEIGHT = 4 * COMMENT_HEIGHT
 PROPORTION = FINAL_WIDTH / FINAL_HEIGHT
+BRAILLE_SIZE = 192
 BRAILLE_CHARACTERS = "".join(
     [
         "⡀⡁⡂⡃⡄⡅⡆⡇⡈⡉⡊⡋⡌⡍⡎⡏",
@@ -23,6 +25,7 @@ BRAILLE_CHARACTERS = "".join(
         "⣰⣱⣲⣳⣴⣵⣶⣷⣸⣹⣺⣻⣼⣽⣾⣿",
     ]
 )
+BRAILLE_IMAGES = os.listdir("braille")  # create logic to ignore this file '.DS_Store'
 
 
 def threshold(image: Image, theta: int) -> None:
@@ -34,15 +37,9 @@ def threshold(image: Image, theta: int) -> None:
 
     for x in range(width):
         for y in range(height):
-            # get rgb values from the current pixel,
-            # use a try... except block to prevent failure
-            # due to transparency
-            try:
-                r, g, b = pixels[x, y]
-            except:
-                r, g, b, _ = pixels[x, y]
+            r, g, b = pixels[x, y]
 
-            avg = (r + g + b) / 3
+            avg = (r + g + b) // 3
 
             if avg < theta:
                 # set the pixel to black
@@ -71,8 +68,52 @@ def crop(image: Image) -> None:
     return image.crop((to_centre, 0, new_width + to_centre, height))
 
 
-def create_ascii(image: Image) -> None:
+def extract_subimage(image: Image, x: int, y: int) -> Image:
+    print(f"{x} -> {x + 1}, {y} -> {y + 3}")
+    return image.crop((x, y, x + 2, y + 4))
+
+
+def get_ascii_character(image: Image) -> str:
+    # get pixels from the subimage (2x4)
+    subimage_pixels = image.load()
+
+    for ascii_image in BRAILLE_IMAGES:
+        if ".DS_Store" == ascii_image:
+            continue
+
+        braille = Image.open(f"braille/{ascii_image}")
+        braille = braille.convert("1")
+        braille_pixels = braille.load()
+        matches = 0
+
+        for x in range(2):
+            for y in range(4):
+                p1 = braille_pixels[x, y]
+                p2 = subimage_pixels[x, y]
+
+                if p1 == p2:
+                    matches += 1
+
+        if matches == 8:
+            print("match found")
+            return BRAILLE_CHARACTERS[int(ascii_image[8:11])]
+
+    return " "
+
+
+def get_ascii_image(image: Image) -> str:
     width, height = image.size
+    ascii_image = []
+
+    for y in range(0, height, 4):
+        ascii_row = []
+        for x in range(0, width, 2):
+            subimage = extract_subimage(image, x, y)
+            ascii_row.append(get_ascii_character(subimage))
+
+        ascii_image.append(ascii_row)
+
+    return ascii_image
 
 
 if __name__ == "__main__":
@@ -93,6 +134,7 @@ if __name__ == "__main__":
 
     # load the image
     image = Image.open(args.image_path)
+    image = image.convert("RGB")
     image = crop(image)
 
     # resize the image
@@ -101,5 +143,10 @@ if __name__ == "__main__":
     # perform the threshold to the image
     threshold(image, args.t)
 
+    # convert the image to a binary image
+    image = image.convert("1")
+
     # save the image
     image.save(args.o)
+
+    print(get_ascii_image(image))
