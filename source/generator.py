@@ -75,6 +75,7 @@ def extract_subimage(image: Image, x: int, y: int) -> Image:
 def get_ascii_character(image: Image) -> str:
     # get pixels from the subimage (2x4)
     subimage_pixels = image.load()
+    closest_match = ""
 
     for ascii_image in BRAILLE_IMAGES:
         if ".DS_Store" == ascii_image:
@@ -96,7 +97,10 @@ def get_ascii_character(image: Image) -> str:
         if matches == 8:
             return BRAILLE_CHARACTERS[int(ascii_image[8:11])]
 
-    return " "
+        if matches == 7:
+            closest_match = BRAILLE_CHARACTERS[int(ascii_image[8:11])]
+
+    return closest_match
 
 
 def get_ascii_image(image: Image) -> list:
