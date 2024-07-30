@@ -69,7 +69,6 @@ def crop(image: Image) -> None:
 
 
 def extract_subimage(image: Image, x: int, y: int) -> Image:
-    print(f"{x} -> {x + 1}, {y} -> {y + 3}")
     return image.crop((x, y, x + 2, y + 4))
 
 
@@ -95,13 +94,12 @@ def get_ascii_character(image: Image) -> str:
                     matches += 1
 
         if matches == 8:
-            print("match found")
             return BRAILLE_CHARACTERS[int(ascii_image[8:11])]
 
     return " "
 
 
-def get_ascii_image(image: Image) -> str:
+def get_ascii_image(image: Image) -> list:
     width, height = image.size
     ascii_image = []
 
@@ -114,6 +112,11 @@ def get_ascii_image(image: Image) -> str:
         ascii_image.append(ascii_row)
 
     return ascii_image
+
+
+def print_ascii(a: list):
+    for r in a:
+        print("".join(r))
 
 
 if __name__ == "__main__":
@@ -149,4 +152,5 @@ if __name__ == "__main__":
     # save the image
     image.save(args.o)
 
-    print(get_ascii_image(image))
+    ascii_array = get_ascii_image(image)
+    print_ascii(ascii_array)
