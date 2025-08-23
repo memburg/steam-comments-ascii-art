@@ -11,17 +11,17 @@ val PROPORTION = FINAL_WIDTH.toDouble() / FINAL_HEIGHT
 val BRAILLE_SIZE = 192
 val BRAILLE_CHARACTERS = (
     "⡀⡁⡂⡃⡄⡅⡆⡇⡈⡉⡊⡋⡌⡍⡎⡏" +
-    "⡐⡑⡒⡓⡔⡕⡖⡗⡘⡙⡚⡛⡜⡝⡞⡟" +
-    "⡠⡡⡢⡣⡤⡥⡦⡧⡨⡩⡪⡫⡬⡭⡮⡯" +
-    "⡰⡱⡲⡳⡴⡵⡶⡷⡸⡹⡺⡻⡼⡽⡾⡿" +
-    "⢀⢁⢂⢃⢄⢅⢆⢇⢈⢉⢊⢋⢌⢍⢎⢏" +
-    "⢐⢑⢒⢓⢔⢕⢖⢗⢘⢙⢚⢛⢜⢝⢞⢟" +
-    "⢠⢡⢢⢣⢤⢥⢦⢧⢨⢩⢪⢫⢬⢭⢮⢯" +
-    "⢰⢱⢲⢳⢴⢵⢶⢷⢸⢹⢺⢻⢼⢽⢾⢿" +
-    "⣀⣁⣂⣃⣄⣅⣆⣇⣈⣉⣊⣋⣌⣍⣎⣏" +
-    "⣐⣑⣒⣓⣔⣕⣖⣗⣘⣙⣚⣛⣜⣝⣞⣟" +
-    "⣠⣡⣢⣣⣤⣥⣦⣧⣨⣩⣪⣫⣬⣭⣮⣯" +
-    "⣰⣱⣲⣳⣴⣵⣶⣷⣸⣹⣺⣻⣼⣽⣾⣿"
+        "⡐⡑⡒⡓⡔⡕⡖⡗⡘⡙⡚⡛⡜⡝⡞⡟" +
+        "⡠⡡⡢⡣⡤⡥⡦⡧⡨⡩⡪⡫⡬⡭⡮⡯" +
+        "⡰⡱⡲⡳⡴⡵⡶⡷⡸⡹⡺⡻⡼⡽⡾⡿" +
+        "⢀⢁⢂⢃⢄⢅⢆⢇⢈⢉⢊⢋⢌⢍⢎⢏" +
+        "⢐⢑⢒⢓⢔⢕⢖⢗⢘⢙⢚⢛⢜⢝⢞⢟" +
+        "⢠⢡⢢⢣⢤⢥⢦⢧⢨⢩⢪⢫⢬⢭⢮⢯" +
+        "⢰⢱⢲⢳⢴⢵⢶⢷⢸⢹⢺⢻⢼⢽⢾⢿" +
+        "⣀⣁⣂⣃⣄⣅⣆⣇⣈⣉⣊⣋⣌⣍⣎⣏" +
+        "⣐⣑⣒⣓⣔⣕⣖⣗⣘⣙⣚⣛⣜⣝⣞⣟" +
+        "⣠⣡⣢⣣⣤⣥⣦⣧⣨⣩⣪⣫⣬⣭⣮⣯" +
+        "⣰⣱⣲⣳⣴⣵⣶⣷⣸⣹⣺⣻⣼⣽⣾⣿"
 )
 
 fun threshold(
@@ -54,7 +54,7 @@ fun crop(image: BufferedImage): BufferedImage {
     val width = image.width
     val height = image.height
     val newWidth = (height * PROPORTION).toInt()
-    val toCentre = (width - newWidth) / 2
+    val toCentre = ((width - newWidth) / 2)
     return image.getSubimage(toCentre, 0, newWidth, height)
 }
 
@@ -64,20 +64,38 @@ fun extractSubimage(
     y: Int,
 ): BufferedImage = image.getSubimage(x, y, 2, 4)
 
+fun getBrailleImages(): List<String> =
+    File("braille")
+        .listFiles()
+        ?.filter { it.isFile && it.name.endsWith(".png") && it.name != ".DS_Store" }
+        ?.map { it.name }
+        ?: emptyList()
+
 fun getAsciiCharacter(subimage: BufferedImage): Char {
-    // This is a stub: in the Python code, you compare to reference images.
-    // Here, we use a simple heuristic: count black pixels.
-    var count = 0
+    val brailleImages = getBrailleImages()
+    var closestMatch = ""
+    val subPixels = Array(2) { Array(4) { 0 } }
     for (x in 0 until 2) {
         for (y in 0 until 4) {
             val rgb = subimage.getRGB(x, y)
-            val color = Color(rgb)
-            if (color.red < 128) count++
+            subPixels[x][y] = if (Color(rgb).red < 128) 0 else 255
         }
     }
-    // Map count to a braille character index (0..191)
-    val idx = (count * BRAILLE_SIZE / 8).coerceIn(0, BRAILLE_SIZE - 1)
-    return BRAILLE_CHARACTERS[idx]
+    for (asciiImage in brailleImages) {
+        val idx = asciiImage.substring(8, 11).toIntOrNull() ?: continue
+        val braille = ImageIO.read(File("braille/$asciiImage"))
+        var matches = 0
+        for (x in 0 until 2) {
+            for (y in 0 until 4) {
+                val bRgb = braille.getRGB(x, y)
+                val bVal = if (Color(bRgb).red < 128) 0 else 255
+                if (bVal == subPixels[x][y]) matches++
+            }
+        }
+        if (matches == 8) return BRAILLE_CHARACTERS[idx]
+        if (matches == 7) closestMatch = BRAILLE_CHARACTERS[idx].toString()
+    }
+    return if (closestMatch.isNotEmpty()) closestMatch[0] else ' '
 }
 
 fun getAsciiImage(image: BufferedImage): List<List<Char>> {
@@ -93,9 +111,9 @@ fun getAsciiImage(image: BufferedImage): List<List<Char>> {
     return asciiImage
 }
 
-fun printAscii(ascii: List<List<Char>>) {
-    for (row in ascii) {
-        println(row.joinToString(""))
+fun printAscii(a: List<List<Char>>) {
+    for (r in a) {
+        println(r.joinToString(""))
     }
 }
 
@@ -104,12 +122,13 @@ fun main(args: Array<String>) {
         println("Usage: kotlin Generator.kt <image_path> [--t threshold] [--o output]")
         return
     }
-    val imagePath = args[0]
     var thresholdValue = 100
     var outputName = "ascii.png"
+    var imagePath = args[0]
     for (i in 1 until args.size) {
         when (args[i]) {
             "--t" -> if (i + 1 < args.size) thresholdValue = args[i + 1].toInt()
+            "--o" -> if (i + 1 < args.size) outputName = args[i + 1]
         }
     }
     val image = ImageIO.read(File(imagePath))
